@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.2.7/raphael.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.min.js"></script>
+    <script>
+        var kittyId, submit, results, treeParentNode, treeNodes = [];
+        var ready = function(fn) {
+            if (document.attachEvent ? document.readyState === "complete" : document.readyState !== "loading"){
+                fn();
+            } else {
+                document.addEventListener('DOMContentLoaded', fn);
+            }
+        };
+
+        var attachEvents = function() {
+            kittyId = document.getElementById('kittyId');
+            submit = document.getElementById('loadKitty');
+            results = document.getElementById('results');
+            submit.addEventListener('click', loadKittyFromInput);
+        };
+
+        var loadKittyFromInput = function() {
+            var kitty = kittyId.value;
+            result = '';
+
+            loadKitty(kitty);
+        };
+
+        var loadKitty = function(kitty, parent) {
+            var request = new XMLHttpRequest();
+
+            request.open('GET', 'https://api.cryptokitties.co/kitties/'+kitty, true);
+
+            request.onload = function() {
+                if (request.status >= 200 && request.status < 400) {
+                    var json = JSON.parse(request.responseText);
+                    showKitty(json, parent);
+                } else {
+                }
+            };
+
+            request.onerror = function() {
+            };
+
+            request.send();
+        };
+
+        var showKitty = function(json, parent) {
+            if (undefined === parent) {
+                treeParentNode = {
+                    text: {
+                        title: json.name,
+                        name: 'Generation: '+json.generation+' - ID: '+json.id
+                    },
+                    link: { href: 'https://www.cryptokitties.co/kitty/'+json.id },
+                    image: json.image_url,
+                    children: [],
+                };
+                parent = treeParentNode;
+            }
+
+            if (undefined != json.matron && undefined !== json.matron.id) {
+                var currentNode = {
+                    text: {
+                        title: json.matron.name?json.matron.name:'Kitty #'+json.matron.id,
+                        name: 'Matron - Generation: '+json.matron.generation+' - ID: '+json.matron.id
+                    },
+                    link: { href: 'https://www.cryptokitties.co/kitty/'+json.matron.id },
+                    image: json.matron.image_url,
+                    parent: parent,
+                    children: [],
+                };
+
+                treeNodes.push(currentNode);
+                parent.children.push(currentNode);
+                // console.log('adding matron '+json.matron.id+' of '+json.id);
+                loadKitty(json.matron.id, currentNode);
+            }
+
+            if (undefined != json.sire && undefined !== json.sire.id) {
+                var currentNode = {
+                    text: {
+                        title: json.sire.name?json.sire.name:'Kitty #'+json.sire.id,
+                        name: 'Sire - Generation: '+json.sire.generation+' - ID: '+json.sire.id
+                    },
+                    link: { href: 'https://www.cryptokitties.co/kitty/'+json.sire.id },
+                    image: json.sire.image_url,
+                    parent: parent,
+                    children: [],
+                };
+
+                treeNodes.push(currentNode);
+                parent.children.push(currentNode);
+                // console.log('adding sire '+json.sire.id+' of '+json.id);
+                loadKitty(json.sire.id, currentNode);
+            }
+
+            chart = new Treant(
+                [
+                    {
+                        container: '#results',
+                    },
+                    treeParentNode,
+                    treeNodes,
+                ]
+            );
+        };
+
+        ready(attachEvents);
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.css" />
+</head>
+<body>
+    <div class="input">
+        <input type="text" id="kittyId" />
+        <button id="loadKitty">Load</button>
+    </div>
+    <div class="result" id="results">
+    </div>
+</body>
+</html>
