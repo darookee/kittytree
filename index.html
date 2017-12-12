@@ -4,7 +4,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.2.7/raphael.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/treant-js/1.0/Treant.min.js"></script>
     <script>
-        var kittyId, submit, results, treeParentNode, treeNodes = [];
+        var kittyId, submit, results, maxGen, treeParentNode, treeNodes = [];
+        var maxGenInput, generations = [];
         var ready = function(fn) {
             if (document.attachEvent ? document.readyState === "complete" : document.readyState !== "loading"){
                 fn();
@@ -17,13 +18,16 @@
             kittyId = document.getElementById('kittyId');
             submit = document.getElementById('loadKitty');
             results = document.getElementById('results');
+            maxGenInput = document.getElementById('kittyGenerationCount');
             submit.addEventListener('click', loadKittyFromInput);
         };
 
         var loadKittyFromInput = function() {
             var kitty = kittyId.value;
-            result = '';
 
+            result = '';
+            maxGen = parseInt(maxGenInput.value, 10);
+            generations = [];
             loadKitty(kitty);
         };
 
@@ -35,18 +39,22 @@
             request.onload = function() {
                 if (request.status >= 200 && request.status < 400) {
                     var json = JSON.parse(request.responseText);
-                    showKitty(json, parent);
-                } else {
+                    addKitty(json, parent);
                 }
-            };
-
-            request.onerror = function() {
             };
 
             request.send();
         };
 
-        var showKitty = function(json, parent) {
+        var addKitty = function(json, parent) {
+            var myKittyGenerationId;
+
+            if (generations.length === maxGen) {
+                showKitties();
+
+                return;
+            }
+
             if (undefined === parent) {
                 treeParentNode = {
                     text: {
@@ -60,6 +68,8 @@
                 parent = treeParentNode;
             }
 
+            myKittyGenerationId += json.id;
+
             if (undefined != json.matron && undefined !== json.matron.id) {
                 var currentNode = {
                     text: {
@@ -71,6 +81,8 @@
                     parent: parent,
                     children: [],
                 };
+
+                myKittyGenerationId += json.matron.id;
 
                 treeNodes.push(currentNode);
                 parent.children.push(currentNode);
@@ -90,12 +102,18 @@
                     children: [],
                 };
 
+                myKittyGenerationId += json.sire.id;
+
                 treeNodes.push(currentNode);
                 parent.children.push(currentNode);
                 // console.log('adding sire '+json.sire.id+' of '+json.id);
                 loadKitty(json.sire.id, currentNode);
             }
 
+            generations.push(myKittyGenerationId);
+        };
+
+        var showKitties = function() {
             chart = new Treant(
                 [
                     {
@@ -118,6 +136,7 @@
     <div
     <div class="input">
         <input type="text" id="kittyId" />
+        <input type="number" value="7" id="kittyGenerationCount" />
         <button id="loadKitty">Load</button>
     </div>
     <div class="result" id="results">
